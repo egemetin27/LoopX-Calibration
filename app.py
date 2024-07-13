@@ -19,10 +19,10 @@ class CalibrationTool(QWidget):
         self.is_last_calibration_real_data = False
 
         static_base2camera_rot = R.from_euler('xyz', np.random.rand(3) * 45 - np.random.rand(3) * 90, degrees=True).as_matrix() # -45 to 45 degrees
-        static_base2camera_trans = np.random.rand(3) - np.random.rand(3) * 0.4  # Random translation up to 0.5 meters / -0.4  to 1.0
+        static_base2camera_trans = np.random.rand(3) - np.random.rand(3) * 0.4  # -0.4  to 1.0 meters
 
         static_target2gripper_rot = R.from_euler('xyz', np.random.rand(3) * 45 - np.random.rand(3) * 90, degrees=True).as_matrix()
-        static_target2gripper_trans = np.random.rand(3) * 0.1 - np.random.rand(3) * 0.05 # Random translation up to 0.5 meters / -0.05 to 0.1
+        static_target2gripper_trans = np.random.rand(3) * 0.1 - np.random.rand(3) * 0.05 # -0.05 to 0.1 meters
 
         self.T_base2camera = create_homogeneous_transformation(static_base2camera_rot, static_base2camera_trans)
         self.T_target2gripper = create_homogeneous_transformation(static_target2gripper_rot, static_target2gripper_trans)
@@ -88,7 +88,7 @@ class CalibrationTool(QWidget):
         self.transErrorTextBox.append("Translation Error (meters): \n")
         resultsLayout.addWidget(self.rotErrorTextBox)
         resultsLayout.addWidget(self.transErrorTextBox)
-        
+
         self.resRotationTextBox = QTextEdit(self, readOnly=True)
         self.resRotationTextBox.append("Rotation Matrix:\n")
         self.resRotationTextBox.setMinimumSize(230, 110)     
@@ -135,7 +135,7 @@ class CalibrationTool(QWidget):
         testLayout.addWidget(self.testResultTextBox)
         testLayout.addWidget(self.bestTestResultTextBox)
         testLayout.addLayout(testInputsLayout)
-        
+
         mainLayout.addLayout(upLayout)
         mainLayout.addLayout(buttonsLayout)
         mainLayout.addLayout(resultsLayout)
@@ -149,7 +149,7 @@ class CalibrationTool(QWidget):
         if self.inputLeft.text() == "" or self.inputRight.text() == "":
             self.saveBtn.setText("Save (Please fill both inputs)")
             return
-            
+
         left_input = f"{self.inputLeft.text()}"
         right_input = f"{self.inputRight.text()}"
 
@@ -178,13 +178,13 @@ class CalibrationTool(QWidget):
 
         self.inputLeft.clear()
         self.inputRight.clear()
-        
+
         self.saveBtn.setText("Save")
 
     def delete_last_line(self):
         if self.count == 0:
             return
-        
+
         self.T_base2gripper.pop()
         self.T_target2camera.pop()
         self.count -= 1
@@ -218,11 +218,14 @@ class CalibrationTool(QWidget):
             self.print_transformation_results()
         else:
             self.print_transformation_results(clear_all_boxes=False, real_data=True, testNo=testNo)
-        
+
     def calibrate_with_simulation(self, is_large_area=None, clear_all_boxes=True, testNo=None, generate_coordinates=True, amount_of_points=None):
         self.is_last_calibration_real_data = False
-        number_of_points = self.number_of_points if self.inputNumberOfInputs.text() == "" else int(self.inputNumberOfInputs.text())
-        if self.inputNumberOfInputs.text() == "0": generate_coordinates = True # to regenerate coordinates for test
+        self.number_of_points = (
+            self.number_of_points
+            if self.inputNumberOfInputs.text() == ""
+            else int(self.inputNumberOfInputs.text())
+        )
         is_large_area = self.radio1.isChecked() if is_large_area is None else is_large_area
 
         if generate_coordinates: 
@@ -244,8 +247,8 @@ class CalibrationTool(QWidget):
         self.errorTranslation = translation_error
 
         self.print_transformation_results(clear_all_boxes, testNo, amount_of_points=amount_of_points)
-        self.count = number_of_points
-               
+        self.count = self.number_of_points
+
     def calculate_errors(self, result_camera2base_rot, result_camera2base_trans):    
         # Invert the static_base2camera to get camera2base (for comparison)
         T_camera2base = np.linalg.inv(self.T_base2camera)
@@ -255,7 +258,7 @@ class CalibrationTool(QWidget):
         _translation_error = translation_error(T_camera2base[:3,3:], result_camera2base_trans)
 
         return _rotation_error, _translation_error
-    
+
     def print_transformation_results(self, clear_all_boxes=True, testNo=None , real_data=False, amount_of_points=None, without_calib=False):
         if clear_all_boxes:
             self.clear_all_boxes()
@@ -276,7 +279,7 @@ class CalibrationTool(QWidget):
                 # Format each row of the "rotation" matrix
                 formatted_row = "  ".join(f"{float(val):+07.4f}" for val in self.rotationMatrix[i])
                 self.resRotationTextBox.append(formatted_row)
-                
+
                 # Format each element of the "translation" vector
                 formatted_translation = f"{float(self.translationVector[i][0]):+07.4f}"
                 self.resTranslationTextBox.append(formatted_translation)
@@ -285,7 +288,6 @@ class CalibrationTool(QWidget):
 
         # Print the coordinates for camera2target
         for j in range(amount_of_points):
-            # get only 4 decimal points
             camera2target_rot_matrix = matrix_to_quaternion([t[:3,:3] for t in self.T_target2camera][j])
             coordinate_trans = ", ".join([f"{float(coord):.4f}" for coord in [t[:3,3:] for t in self.T_target2camera][j]])
             coordinate_rot = ", ".join([f"{float(coord):.4f}" for coord in camera2target_rot_matrix])
@@ -294,7 +296,6 @@ class CalibrationTool(QWidget):
 
         # Print the coordinates for base2gripper
         for j in range(amount_of_points):
-            # get only 4 decimal points
             base2gripper_rot_matrix = matrix_to_quaternion([t[:3,:3] for t in self.T_base2gripper][j])
             coordinate_trans = ", ".join([f"{float(coord):.4f}" for coord in [t[:3,3:] for t in self.T_base2gripper][j]])
             coordinate_rot = ", ".join([f"{float(coord):.4f}" for coord in base2gripper_rot_matrix])
@@ -302,7 +303,7 @@ class CalibrationTool(QWidget):
             self.rightTextBox.append(f"{str(j+1).rjust(2)} : {coordinate}")
 
         if not real_data and not without_calib:
-            # Print the errors   
+            # Print the errors
             self.rotErrorTextBox.append(f"{self.errorRotation:.4f}")
             self.transErrorTextBox.append(f"{self.errorTranslation:.4f}")
 
@@ -316,7 +317,7 @@ class CalibrationTool(QWidget):
             T_base2gripper_single = self.T_target2gripper @ T_base2target_single
             T_base2gripper.append(T_base2gripper_single)
             T_target2camera.append(np.linalg.inv(T_camera2target_single))
-            
+
         self.T_target2camera, self.T_base2gripper = T_target2camera, T_base2gripper
 
     def test(self):
@@ -326,19 +327,19 @@ class CalibrationTool(QWidget):
             transformations = self.read_transformations()
             self.apply_tests(transformations)
             return
-        
+
         is_large_area = True
         num_of_points_arr = [5, 8, 10, 15, 20, 25]
         self.number_of_points = max(num_of_points_arr)
         error_arr = []
-        
+
         if self.testSetInput.text() == "-1":
             is_large_area = False
         elif self.testSetInput.text() == "0":
             self.reset_program(num_of_points=self.number_of_points)
         else:
             self.generate_coordinates()
-        
+
         for i, num_of_points in enumerate(num_of_points_arr):
             self.calibrate_with_simulation(is_large_area=is_large_area, clear_all_boxes=False, testNo=i + 1, generate_coordinates=False, amount_of_points=num_of_points)
             error_arr.append((self.errorRotation, self.errorTranslation))
@@ -347,7 +348,7 @@ class CalibrationTool(QWidget):
         self.testResultTextBox.append("\nTest Results: \n*************************************************")
         for i, error in enumerate(error_arr):
             self.testResultTextBox.append("++ Test " + str(i+1) + " ++\n")
-            self.testResultTextBox.append("Number of points: " + str(num_of_points_arr[i//2] ) + "   |   Is Large Area:  " + str("True" if i % 2 == 0 else "False") + "\n")
+            self.testResultTextBox.append("Number of points: " + str(num_of_points_arr[i]) + "\n")
             self.testResultTextBox.append("Rotation Error: " + str(error[0]))
             self.testResultTextBox.append("Translation Error: " + str(error[1]))
             self.testResultTextBox.append("*************************************************")
@@ -358,21 +359,21 @@ class CalibrationTool(QWidget):
         self.bestTestResultTextBox.append(f"Rotation Error: {best_error[0]:0.4f} degrees")
         self.bestTestResultTextBox.append(f"Translation Error: {best_error[1]:0.4f} meters")
         self.bestTestResultTextBox.append("*************************************************")
-    
+
     def reset_program(self, num_of_points=20):
         self.number_of_points = num_of_points
 
         static_base2camera_rot = R.from_euler('xyz', np.random.rand(3) * 45 - np.random.rand(3) * 90, degrees=True).as_matrix()
-        static_base2camera_trans = np.random.rand(3) - np.random.rand(3) * 0.4  # Random translation up to 0.5 meters
+        static_base2camera_trans = np.random.rand(3) - np.random.rand(3) * 0.4
         static_target2gripper_rot = R.from_euler('xyz', np.random.rand(3) * 45 - np.random.rand(3) * 90, degrees=True).as_matrix()
-        static_target2gripper_trans = np.random.rand(3) * 0.1 - np.random.rand(3) * 0.05 # Random translation up to 0.5 meters
+        static_target2gripper_trans = np.random.rand(3) * 0.1 - np.random.rand(3) * 0.05
         self.T_base2camera = create_homogeneous_transformation(static_base2camera_rot, static_base2camera_trans)
         self.T_target2gripper = create_homogeneous_transformation(static_target2gripper_rot, static_target2gripper_trans)
 
         self.generate_coordinates()
 
         self.clear_all_boxes()
-    
+
     def read_transformations(self):
         # returns 4x4 transformation matrices
         # data is taken as target2cam, gripper2base
@@ -390,7 +391,7 @@ class CalibrationTool(QWidget):
                         coordinates = line.split(" ")
                         coordinates_arr = list(map(lambda x: float(x.strip()), coordinates))
                         transformation_target2camera.append(coordinates_arr)
-            
+
             input_file_robot = "./data/robot_pose_" + self.testSetInput.text().strip()
             T_base2gripper = []
             with open(input_file_robot, "r") as f:
@@ -410,9 +411,9 @@ class CalibrationTool(QWidget):
             print(f"Error: The file '{input_file_robot}' does not exist.")
         except Exception as e:
             print(f"Error: {e}")
-            
+
         return T_target2camera, T_base2gripper # 4x4 matrices
-    
+
     def apply_tests(self, transformations):
         T_target2camera, T_base2gripper = transformations # 4x4 matrices
         data_set_percentages = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0]
@@ -457,7 +458,7 @@ class CalibrationTool(QWidget):
     def get_pose_LoopX(self):
         HOST = '192.168.199.4'  # Change this to the IP address you want to listen on
         PORT = 55598  # Change this to the port you want to listen on
-        
+
         cli = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         connected = False
         while not connected:
@@ -517,8 +518,7 @@ class CalibrationTool(QWidget):
             first_element = quat[0]  # Remove the first element from the list
             quat = quat[1:]
             quat = np.append(quat, first_element)
-            
-            
+
             pose = np.concatenate((position, quat))
             poses.append(pose)
         return np.array(poses)                                    
