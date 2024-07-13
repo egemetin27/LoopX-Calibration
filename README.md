@@ -27,8 +27,8 @@ The following steps will guide you through the installation process after instal
 
 1. Clone the repository:
    ```bash
-   git clone <repository_url>
-   cd <repository_directory
+   git clone https://github.com/egemetin27/LoopX-Calibration.git
+   cd LoopX-Calibration
    ```
 
 2. Install the required packages:
